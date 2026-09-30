@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/profile_screen.dart';
+import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -12,11 +12,11 @@ class MovieLogApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'MovieLog',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const ProfileScreen(),
+      routerConfig: AppRouter.router,
     );
   }
 }
