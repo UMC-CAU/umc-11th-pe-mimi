@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../widgets/common_app_bar.dart';
 import '../widgets/sign_up_header.dart';
@@ -109,6 +110,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (!isValid) return;
 
     FocusScope.of(context).unfocus();
+    context.go('/home');
   }
 
   @override

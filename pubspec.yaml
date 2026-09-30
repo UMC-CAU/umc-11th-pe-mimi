@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   flutter_svg: ^2.0.10
   cupertino_icons: ^1.0.6
+  go_router: ^18.0.2
+  flutter_rating_bar: ^4.0.1
 
 dev_dependencies:
   flutter_test:
@@ -21,13 +23,12 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/
+    - assets/images/profile/
+    - assets/images/posters/
     - assets/icons/
     - assets/logos/
 
-  # Manrope 폰트 파일(Manrope-VariableFont_wght.ttf)을 MovieLog 공통 Asset & Font ZIP에서
-  # 내려받아 assets/fonts/ 에 넣은 뒤 아래 주석을 해제하세요.
-  # fonts:
-  #   - family: Manrope
-  #     fonts:
-  #       - asset: assets/fonts/Manrope-VariableFont_wght.ttf
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-VariableFont_wght.ttf
