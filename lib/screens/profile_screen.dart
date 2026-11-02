@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import '../models/profile_stat.dart';
 import '../widgets/common_app_bar.dart';
@@ -8,8 +9,6 @@ import '../widgets/favorite_genres.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_stats.dart';
 
-/// 1주차 미션: MovieLog "내 프로필" 화면.
-/// 화면 전환이나 입력 기능 없이 정적인 UI만 구현한다.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -66,6 +65,21 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const FavoriteGenres(genres: _genres),
+              const SizedBox(height: 24),
+              const Divider(),
+
+              // 6주차: 내가 등록한 평점 화면으로 이동
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.star_outline, color: colors.primary),
+                title: const Text(
+                  '내가 등록한 평점',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/my/ratings'),
+              ),
+              const Divider(),
             ],
           ),
         ),
