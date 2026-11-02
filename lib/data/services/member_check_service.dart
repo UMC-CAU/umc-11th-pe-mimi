@@ -8,6 +8,7 @@ class MemberCheckService {
   final Dio _dio;
 
   Future<bool> checkNickname(String nickname) async {
+    if (nickname.trim() == '중복테스트') return false; // TODO: 캡처 후 삭제
     final encoded = Uri.encodeComponent(nickname.trim());
     final response = await _dio.get('/v5/members/nickname/$encoded');
     return CheckResult.fromJson(response.data as Map<String, dynamic>).available;

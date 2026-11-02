@@ -218,6 +218,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 16),
 
+
                 // 가입하기: 전체 너비
                 MovieLogButton(
                   label: '가입하기',
