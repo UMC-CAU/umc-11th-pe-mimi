@@ -6,7 +6,7 @@ import '../data/models/tmdb_movie_dto.dart';
 import '../data/services/rating_api_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 
-const int sampleMemberId = 1; // 로그인 전이라 학습용 memberId 1로 고정
+const int sampleMemberId = 1; // 6주차 학습용 고정값 (7주차부터는 LearningMemberSession 사용)
 
 enum MyRatingsLoadStatus { idle, loading, success, empty, error }
 
@@ -23,6 +23,7 @@ class MyRatingsViewModel extends ChangeNotifier {
   List<RatingWithMovie> ratings = const [];
   MyRatingsLoadStatus status = MyRatingsLoadStatus.idle;
   String? message;
+  String? refreshWarning; // 저장은 성공했지만 목록 재조회가 실패한 경우
 
   Future<void> load() async {
     final version = ++_requestVersion;
@@ -64,6 +65,51 @@ class MyRatingsViewModel extends ChangeNotifier {
     }
 
     if (!_disposed && version == _requestVersion) notifyListeners();
+  }
+
+  // 쓰기 성공 뒤 목록을 서버 상태와 맞춥니다. GET 실패는 저장 실패가 아닙니다.
+  Future<void> _refreshAfterWrite() async {
+    await load();
+    if (_disposed) return;
+    if (status == MyRatingsLoadStatus.error) {
+      refreshWarning = '저장은 완료됐지만 목록을 불러오지 못했습니다. 조회만 다시 시도해 주세요.';
+    } else {
+      refreshWarning = null;
+    }
+    notifyListeners();
+  }
+
+  Future<void> updateRating({
+    required int ratingId,
+    required int score,
+    String? comment,
+  }) async {
+    try {
+      await _service.updateRating(
+        memberId: memberId,
+        ratingId: ratingId,
+        score: score,
+        comment: comment,
+      );
+    } on DioException catch (error) {
+      final errorMessage = writeErrorMessage(error);
+      if (shouldRefreshAfterRatingError(error)) await load();
+      // 쓰기 실패만 Dialog가 실패로 처리합니다. (서버 message를 그대로 전달)
+      throw StateError(errorMessage);
+    }
+    
+    await _refreshAfterWrite();
+  }
+
+  Future<void> deleteRating(int ratingId) async {
+    try {
+      await _service.deleteRating(memberId: memberId, ratingId: ratingId);
+    } on DioException catch (error) {
+      final errorMessage = writeErrorMessage(error);
+      if (shouldRefreshAfterRatingError(error)) await load();
+      throw StateError(errorMessage);
+    }
+    await _refreshAfterWrite();
   }
 
   @override

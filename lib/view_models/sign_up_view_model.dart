@@ -1,15 +1,71 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import '../data/services/member_check_service.dart';
+import '../data/models/create_member_request.dart';
+import '../data/services/sign_up_service.dart';
 
 enum CheckStatus { idle, checking, available, duplicated, error }
+
+enum SubmitStatus { idle, submitting, success, error }
 
 class SignUpViewModel extends ChangeNotifier {
   SignUpViewModel(this._service);
 
-  final MemberCheckService _service;
+  final SignUpService _service;
   bool _disposed = false;
+
+  // ===== 제출(회원가입) =====
+  SubmitStatus submitStatus = SubmitStatus.idle;
+  int? createdMemberId; // 가입 성공 응답에서 읽은 실제 ID
+  String? passwordErrorText; // 서버가 거부한 비밀번호 형식 오류
+  String? snackbarMessage; // 입력칸에 붙일 수 없는 오류
+
+  bool get isSubmitting => submitStatus == SubmitStatus.submitting;
+
+  void onPasswordChanged() {
+    passwordErrorText = null;
+    _notify();
+  }
+
+  void _clearServerError() {
+    snackbarMessage = null;
+    passwordErrorText = null;
+    if (submitStatus == SubmitStatus.error) {
+      submitStatus = SubmitStatus.idle;
+    }
+  }
+
+  Future<void> submit(CreateMemberRequest request) async {
+    if (submitStatus == SubmitStatus.submitting) return;
+    submitStatus = SubmitStatus.submitting;
+    createdMemberId = null;
+    passwordErrorText = null;
+    snackbarMessage = null;
+    _notify();
+
+    try {
+      final response = await _service.signUp(request);
+      final id = response.result?.memberId;
+      if (id == null) throw StateError('회원가입 결과에 memberId가 없습니다.');
+      if (_disposed) return;
+      createdMemberId = id;
+      submitStatus = SubmitStatus.success;
+    } on DioException catch (error) {
+      if (_disposed) return;
+      submitStatus = SubmitStatus.error;
+      final message = writeSignUpErrorMessage(error);
+      if (error.response?.statusCode == 400 && message.contains('비밀번호')) {
+        passwordErrorText = message;
+      } else {
+        snackbarMessage = message;
+      }
+    } on StateError {
+      if (_disposed) return;
+      submitStatus = SubmitStatus.error;
+      snackbarMessage = '가입 결과를 확인하지 못했습니다. 새 요청 전에 서버 상태를 확인해 주세요.';
+    }
+    _notify();
+  }
 
   // ===== 닉네임 =====
   CheckStatus nicknameCheckStatus = CheckStatus.idle;
@@ -27,6 +83,7 @@ class SignUpViewModel extends ChangeNotifier {
     final trimmed = value.trim();
     _currentNickname = trimmed;
     _nicknameVersion++; // 기다리던 이전 응답 무시
+    _clearServerError();
     if (_duplicatedNickname != null && trimmed == _duplicatedNickname) {
       nicknameCheckStatus = CheckStatus.duplicated;
       nicknameErrorText = '이미 사용 중인 닉네임입니다.';
@@ -76,6 +133,7 @@ class SignUpViewModel extends ChangeNotifier {
     final trimmed = value.trim();
     _currentEmail = trimmed;
     _emailVersion++;
+    _clearServerError();
     if (_duplicatedEmail != null && trimmed == _duplicatedEmail) {
       emailCheckStatus = CheckStatus.duplicated;
       emailErrorText = '이미 사용 중인 이메일입니다.';
