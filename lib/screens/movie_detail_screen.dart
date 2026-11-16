@@ -4,8 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../data/models/tmdb_movie_dto.dart';
 import '../data/services/rating_api_service.dart';
-import '../view_models/learning_member_session.dart';
 import '../view_models/movie_detail_view_model.dart';
+import '../view_models/auth_view_model.dart';
+import '../view_models/session_rating_store.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
 import '../view_models/sign_up_view_model.dart' show SubmitStatus;
@@ -52,17 +53,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   Future<void> _openRatingDialog(TmdbMovieDto movie) async {
-    final memberId = context.read<LearningMemberSession>().memberId;
-    if (memberId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('먼저 회원가입을 완료해 주세요.')),
-      );
-      return;
-    }
-
-    final viewModel = MovieDetailViewModel(
+        final viewModel = MovieDetailViewModel(
       context.read<RatingApiService>(),
-      memberId,
+      context.read<AuthViewModel>(),
+      context.read<SessionRatingStore>(),
       movie,
     );
     int? savedScore;
