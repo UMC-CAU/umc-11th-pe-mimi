@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
+import '../core/session/session_guard.dart';
+import '../data/models/tmdb_movie_dto.dart';
+import '../data/services/favorite_api_service.dart';
+import '../view_models/favorite_detail_view_model.dart';
 import '../data/services/member_api_service.dart';
 import '../data/services/rating_api_service.dart';
 import '../data/services/sign_up_service.dart';
@@ -21,6 +24,10 @@ import '../view_models/edit_profile_view_model.dart';
 import '../view_models/my_ratings_view_model.dart';
 import '../view_models/session_rating_store.dart';
 import '../view_models/sign_up_view_model.dart';
+import '../screens/favorites_screen.dart';
+import '../view_models/favorites_view_model.dart';
+import '../screens/movie_search_screen.dart';
+import '../view_models/paged_movies_view_model.dart';
 
 // 인증 상태에 따라 갈 수 있는 화면 정하기 (비동기 작업 X, 상태만 보고 판단)
 String? authRedirect(AuthStatus status, String location) {
@@ -118,15 +125,95 @@ class AppRouter {
                     child: const MyRatingsScreen(),
                   ),
                 ),
+                                // 9주차: 내 즐겨찾기
+                GoRoute(
+                  path: 'favorites',
+                  parentNavigatorKey: rootNavigatorKey,
+                  builder: (context, state) {
+                    final auth = context.watch<AuthViewModel>();
+                    final member = auth.member;
+                    final guard = context.read<SessionGuard>();
+
+                    if (member == null) {
+                      return Scaffold(
+                        appBar: AppBar(title: const Text('내 즐겨찾기'), centerTitle: true),
+                        body: Center(
+                          child: auth.memberStatus == MemberLoadStatus.error
+                              ? FilledButton(
+                                  onPressed: () => auth.loadMember(force: true),
+                                  child: const Text('내 정보 다시 조회'),
+                                )
+                              : const CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+                    if (guard.accountId != member.email) {
+                      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                    }
+
+                    return ChangeNotifierProvider<FavoritesViewModel>(
+                      // 계정이 바뀌면 이전 사용자의 목록을 버리고 새로 만듦
+                      key: ValueKey('${member.email}:${guard.generation}'),
+                      create: (context) => FavoritesViewModel(
+                        favoriteApi: context.read<FavoriteApiService>(),
+                        tmdbApi: context.read<TmdbMovieService>(),
+                        sessionGuard: guard,
+                        accountId: member.email,
+                        onSessionExpired: auth.expireSession,
+                      ),
+                      child: FavoritesScreen(
+                        onOpenMovie: (movie) async {
+                          await context.push('/movies/${movie.id}', extra: movie);
+                        },
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ],
         ),
+
+        // 9주차: 검색 (영화 목록과 별도 PagedMoviesViewModel)
+        GoRoute(
+          path: '/movies/search',
+          builder: (context, state) => ChangeNotifierProvider<PagedMoviesViewModel>(
+            create: (context) => PagedMoviesViewModel(tmdbApi: context.read<TmdbMovieService>()),
+            child: MovieSearchScreen(
+              onOpenMovie: (movie) async {
+                await context.push('/movies/${movie.id}', extra: movie);
+              },
+            ),
+          ),
+        ),
+        
         GoRoute(
           path: '/movies/:movieId',
           builder: (context, state) {
             final id = int.parse(state.pathParameters['movieId']!);
-            return MovieDetailScreen(movieId: id);
+            final member = context.watch<AuthViewModel>().member;
+            final guard = context.read<SessionGuard>();
+
+            // 내 정보가 준비되고 현재 세션과 일치할 때까지 로딩
+            if (member == null || guard.accountId != member.email) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+
+            return ChangeNotifierProvider<FavoriteDetailViewModel>(
+              // 계정이나 세션이 바뀌면 이전 ViewModel을 버리고 새로 만듦
+              key: ValueKey('${member.email}:${guard.generation}'),
+              create: (context) => FavoriteDetailViewModel(
+                movieId: id,
+                favoriteApi: context.read<FavoriteApiService>(),
+                sessionGuard: guard,
+                accountId: member.email,
+                onSessionExpired: context.read<AuthViewModel>().expireSession,
+              ),
+              child: MovieDetailScreen(
+                movieId: id,
+                initialMovie: state.extra is TmdbMovieDto ? state.extra as TmdbMovieDto : null,
+              ),
+            );
           },
         ),
       ],

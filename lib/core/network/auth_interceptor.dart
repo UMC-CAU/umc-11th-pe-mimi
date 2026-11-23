@@ -7,12 +7,24 @@ class AuthInterceptor extends Interceptor {
 
   final TokenStorage _storage;
 
+    // JWT를 붙일 보호 요청인지 판단
   bool _isProtected(RequestOptions options) {
+    // MovieLog 서버가 아니면(TMDB 등) JWT 안 붙임
+    if (options.uri.host != 'workbook.devnoco.com') return false;
     final path = options.uri.path;
-    return options.uri.host == 'workbook.devnoco.com' &&
-        (path == '/v7/members/me' ||
-            path == '/v7/ratings' ||
-            path.startsWith('/v7/ratings/'));
+    final method = options.method.toUpperCase();
+
+    final w8Protected = path == '/v8/members/me' ||
+        path == '/v8/ratings' ||
+        path.startsWith('/v8/ratings/');
+
+    // 즐겨찾기: 등록(POST)·목록(GET) / 여부 조회(GET)·해제(DELETE)
+    final favorites =
+        (path == '/v8/favorites' && (method == 'GET' || method == 'POST')) ||
+            (RegExp(r'^/v8/favorites/[1-9]\d*$').hasMatch(path) &&
+                (method == 'GET' || method == 'DELETE'));
+
+    return w8Protected || favorites;
   }
 
   @override

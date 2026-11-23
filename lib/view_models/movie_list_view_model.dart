@@ -25,8 +25,9 @@ class MovieListViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoading => _state == ViewState.loading;
 
+  // 9주차: 영화 목록은 PagedMoviesViewModel이 맡고, 여기선 장르만 불러옴
   Future<void> init() async {
-    await Future.wait([_loadGenres(), loadMovies()]);
+    await _loadGenres();
   }
 
   Future<void> _loadGenres() async {
