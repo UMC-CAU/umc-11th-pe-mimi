@@ -3,7 +3,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
+import 'core/session/auth_session_bridge.dart';
+import 'core/session/session_guard.dart';
+import 'data/services/favorite_api_service.dart';
 import 'core/network/movie_log_client.dart';
 import 'core/network/tmdb_client.dart';
 import 'core/storage/token_storage.dart';
@@ -19,6 +21,7 @@ import 'view_models/learning_member_session.dart';
 import 'view_models/movie_home_view_model.dart';
 import 'view_models/movie_list_view_model.dart';
 import 'view_models/session_rating_store.dart';
+import 'view_models/paged_movies_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +51,7 @@ Future<void> main() async {
           create: (_) => RatingApiService(publicClient, authClient),
         ),        // 보호 Client
         Provider<MemberApiService>(create: (_) => MemberApiService(authClient)),
+        Provider<FavoriteApiService>(create: (_) => FavoriteApiService(authClient)),
         // ViewModel
         ChangeNotifierProvider<AuthViewModel>(
           create: (context) => AuthViewModel(
@@ -57,9 +61,31 @@ Future<void> main() async {
             context.read<SessionRatingStore>(),
           ),
         ),
+                // 9주차: AuthViewModel 상태를 SessionGuard에 연결
+        Provider<AuthSessionBridge>(
+          lazy: false, // 앱 시작부터 로그인/로그아웃 변화를 듣도록
+          create: (context) {
+            final auth = context.read<AuthViewModel>();
+            return AuthSessionBridge(
+              authSignals: auth,
+              sessionVersion: () => auth.sessionVersion,
+              verifiedEmail: () =>
+                  auth.status == AuthStatus.signedIn ? auth.member?.email : null,
+            );
+          },
+          dispose: (_, bridge) => bridge.dispose(),
+        ),
+        Provider<SessionGuard>(
+          create: (context) => context.read<AuthSessionBridge>().guard,
+        ),
         ChangeNotifierProvider<MovieHomeViewModel>(
           create: (context) =>
               MovieHomeViewModel(context.read<TmdbMovieService>())..loadPopular(),
+        ),
+                // 9주차: 영화 탭 목록 (탭을 옮겨도 불러온 목록 유지)
+        ChangeNotifierProvider<PagedMoviesViewModel>(
+          create: (context) =>
+              PagedMoviesViewModel(tmdbApi: context.read<TmdbMovieService>())..loadInitial(),
         ),
         ChangeNotifierProvider<MovieListViewModel>(
           create: (context) =>

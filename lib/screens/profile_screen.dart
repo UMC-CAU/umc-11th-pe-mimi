@@ -103,6 +103,19 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () => context.push('/my/ratings'),
               ),
               const Divider(),
+                            ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.bookmark_outline, color: colors.primary),
+                title: const Text(
+                  '내 즐겨찾기',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                // 내 정보가 준비된 뒤에만 활성화
+                enabled: member != null,
+                onTap: () => context.push('/my/favorites'),
+              ),
+              const Divider(),
             ],
           ),
         ),
